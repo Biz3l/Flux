@@ -4,7 +4,6 @@
 ![React](https://img.shields.io/badge/React-18-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791)
 ![Express](https://img.shields.io/badge/Express-4-000000)
-![License](https://img.shields.io/badge/License-MIT-green)
 
 > 💬 **Flux** é uma plataforma robusta e escalável para **automação de campanhas e fluxos de atendimento via WhatsApp**. Ideal para empresas que desejam automatizar comunicações em massa, gerenciar contatos e orquestrar fluxos de conversação complexos.
 
