@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  # Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: flux-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://backend:3001
+    depends_on:
+      - backend
+    networks:
+      - flux-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Backend Node.js
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flux-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/flux
+      - CORS_ORIGIN=*
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=flux
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flux-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # Worker para processos assíncronos de envio
+  worker-envio:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flux-worker-envio
+    environment:
+      - NODE_ENV=development
+      - WORKER_MODE=envio
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/flux
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=flux
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flux-network
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # Worker para processos assíncronos de fluxo
+  worker-fluxo:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flux-worker-fluxo
+    environment:
+      - NODE_ENV=development
+      - WORKER_MODE=fluxo
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/flux
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=flux
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flux-network
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: flux-postgres
+    environment:
+      POSTGRES_DB: flux
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - flux-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  flux-network:
+    driver: bridge

@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+model Contato {
+  id        Int             @id @default(autoincrement())
+  nome      String
+  telefone  String          @unique
+  criacao   DateTime        @default(now())
+  campanhas FilaEnvio[]
+  fluxos    ExecucaoFluxo[]
+}
+
+model Campanha {
+  id        Int         @id @default(autoincrement())
+  nome      String
+  mensagem  String
+  delayMin  Int
+  delayMax  Int
+  criacao   DateTime    @default(now())
+  filaEnvio FilaEnvio[]
+}
+
+model FilaEnvio {
+  id           Int      @id @default(autoincrement())
+  contatoId    Int
+  campanhaId   Int
+  enviado      Boolean  @default(false)
+  agendadoPara DateTime
+  criadoEm     DateTime @default(now())
+
+  contato  Contato  @relation(fields: [contatoId], references: [id])
+  campanha Campanha @relation(fields: [campanhaId], references: [id])
+}
+
+model Fluxo {
+  id             Int             @id @default(autoincrement())
+  nome           String
+  criadoEm       DateTime        @default(now())
+  etapas         FluxoEtapa[]
+  execucaoFluxos ExecucaoFluxo[]
+}
+
+model FluxoEtapa {
+  id       Int      @id @default(autoincrement())
+  fluxoId  Int
+  ordem    Int
+  mensagem String
+  delayMin Int // delay em minutos até a próxima etapa
+  criadoEm DateTime @default(now())
+
+  fluxo Fluxo @relation(fields: [fluxoId], references: [id])
+}
+
+model ExecucaoFluxo {
+  id         Int      @id @default(autoincrement())
+  contatoId  Int
+  fluxoId    Int
+  etapaAtual Int      @default(0)
+  iniciadoEm DateTime @default(now())
+  finalizado Boolean  @default(false)
+
+  contato Contato @relation(fields: [contatoId], references: [id])
+  fluxo   Fluxo   @relation(fields: [fluxoId], references: [id])
+}
